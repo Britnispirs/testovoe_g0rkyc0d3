@@ -76,6 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
         voiceStatus.className = 'voice-status listening';
         micBtn.classList.add('listening');
         micBtn.classList.remove('processing');
+      } else if (status === 'processing') {
+        voiceStatus.textContent = 'Распознавание речи (Whisper STT)...';
+        voiceStatus.className = 'voice-status processing';
+        micBtn.classList.add('processing');
+        micBtn.classList.remove('listening');
       } else if (status === 'speaking') {
         voiceStatus.textContent = 'Ассистент отвечает...';
         voiceStatus.className = 'voice-status speaking';
@@ -717,6 +722,25 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTtsButtonState(enabled);
     showToast(enabled ? 'Голос включен' : 'Голос выключен', 'info');
   });
+
+  const audioFileInput = document.getElementById('audioFileInput');
+  const audioUploadBtn = document.getElementById('audioUploadBtn');
+  if (audioUploadBtn && audioFileInput) {
+    audioUploadBtn.addEventListener('click', () => audioFileInput.click());
+    audioFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      showToast('Загрузка и распознавание аудио...', 'info');
+      const text = await speech.transcribeAudioFile(file);
+      if (text) {
+        showToast(`Распознано: «${text}»`, 'success');
+        sendMessage(text);
+      } else {
+        showToast('Не удалось распознать речь в файле', 'error');
+      }
+      audioFileInput.value = '';
+    });
+  }
 
   resetSessionBtn.addEventListener('click', async () => {
     try {
