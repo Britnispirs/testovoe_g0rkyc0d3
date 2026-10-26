@@ -7,7 +7,16 @@ from typing import Dict, Any, Optional
 import httpx
 from backend.app.services.nlu_parser import parse_user_intent
 
-logger = logging.getLogger(__name__)
+def _load_env():
+    env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if "=" in line and not line.strip().startswith("#"):
+                    k, v = line.strip().split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+_load_env()
 
 MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")

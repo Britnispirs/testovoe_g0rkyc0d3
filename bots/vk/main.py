@@ -37,20 +37,48 @@ async def send_vk_message(peer_id: int, message: str, keyboard: str = None) -> N
 
 async def call_backend_chat(text: str, session_id: str) -> dict:
     url = f"{BACKEND_URL}/api/assistant/chat"
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(url, json={"message": text, "session_id": session_id})
-        resp.raise_for_status()
-        return resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, json={"message": text, "session_id": session_id})
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        pass
+
+    from backend.app.services.dialog_manager import DialogManager
+    assistant_res = await DialogManager.process_user_message(message=text, session_id=session_id)
+    return {"reply_text": assistant_res.reply_text}
 
 
 async def call_backend_voice(audio_bytes: bytes, filename: str, session_id: str) -> dict:
     url = f"{BACKEND_URL}/api/voice/process"
-    files = {"audio": (filename, audio_bytes, "audio/ogg")}
-    data = {"session_id": session_id}
-    async with httpx.AsyncClient(timeout=25.0) as client:
-        resp = await client.post(url, files=files, data=data)
-        resp.raise_for_status()
-        return resp.json()
+    try:
+        files = {"audio": (filename, audio_bytes, "audio/ogg")}
+        data = {"session_id": session_id}
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(url, files=files, data=data)
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        pass
+
+    from backend.app.services.stt_service import STTService
+    from backend.app.services.dialog_manager import DialogManager
+
+    text, engine = await STTService.transcribe(
+        audio_bytes=audio_bytes,
+        filename=filename,
+        content_type="audio/ogg",
+        language="ru",
+    )
+    if not text:
+        return {"transcribed_text": "", "reply_text": "Не удалось распознать голосовое сообщение."}
+
+    assistant_res = await DialogManager.process_user_message(message=text, session_id=session_id)
+    return {
+        "transcribed_text": text,
+        "reply_text": assistant_res.reply_text,
+    }
 
 
 async def handle_message_new(msg: dict):
