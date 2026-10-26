@@ -56,10 +56,6 @@ async def process_voice_message_endpoint(
     audio: UploadFile = File(..., description="Голосовое сообщение"),
     session_id: str = Form(default="default", description="Идентификатор сессии диалога")
 ):
-    """
-    Принимает аудиозапись напрямую от пользователя (микрофон браузера, Telegram-бот или мобилка),
-    распознает через Whisper STT и мгновенно исполняет команду в DialogManager.
-    """
     try:
         audio_bytes = await audio.read()
         if not audio_bytes:

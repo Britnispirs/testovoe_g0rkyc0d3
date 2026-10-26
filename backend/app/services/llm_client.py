@@ -139,7 +139,6 @@ async def call_groq_llm(prompt: str) -> Optional[Dict[str, Any]]:
 
 
 async def parse_query_with_llm_or_fallback(text: str) -> Dict[str, Any]:
-    # Prioritize Groq: ultra-fast (~150ms) and active
     if GROQ_API_KEY:
         llm_res = await call_groq_llm(text)
         if llm_res and "intent" in llm_res:

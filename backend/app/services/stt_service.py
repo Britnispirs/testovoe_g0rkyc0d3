@@ -13,13 +13,6 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 
 class STTService:
-    """
-    Универсальный сервис Speech-to-Text (STT):
-    1. Основной движок: Groq Whisper API (whisper-large-v3-turbo / whisper-large-v3) — мгновенная скорость и высокая точность для русского языка.
-    2. Резервный движок: Yandex SpeechKit (при наличии YANDEX_API_KEY и YANDEX_FOLDER_ID).
-    3. Резервный движок: OpenAI Whisper API (при наличии OPENAI_API_KEY).
-    """
-
     @classmethod
     async def transcribe(
         cls,
@@ -29,14 +22,10 @@ class STTService:
         language: str = "ru",
         prompt: Optional[str] = "Календарь, задачи, встречи, напоминания, расписание, дата и время."
     ) -> Tuple[Optional[str], str]:
-        """
-        Распознает аудио и возвращает кортеж (распознанный текст, имя использованного движка).
-        """
         if not audio_bytes or len(audio_bytes) < 100:
             logger.warning("Empty or too short audio bytes provided for STT")
             return None, "none"
 
-        # 1. Попытка через Groq Whisper API
         groq_key = os.environ.get("GROQ_API_KEY") or GROQ_API_KEY
         if groq_key:
             text = await cls._transcribe_groq(
@@ -50,7 +39,6 @@ class STTService:
             if text:
                 return text.strip(), "groq-whisper"
 
-        # 2. Попытка через Yandex SpeechKit
         yandex_key = os.environ.get("YANDEX_API_KEY") or YANDEX_API_KEY
         yandex_folder = os.environ.get("YANDEX_FOLDER_ID") or YANDEX_FOLDER_ID
         if yandex_key and yandex_folder:
@@ -63,7 +51,6 @@ class STTService:
             if text:
                 return text.strip(), "yandex-speechkit"
 
-        # 3. Попытка через OpenAI Whisper API
         openai_key = os.environ.get("OPENAI_API_KEY") or OPENAI_API_KEY
         if openai_key:
             text = await cls._transcribe_openai(
@@ -94,7 +81,6 @@ class STTService:
             "Authorization": f"Bearer {api_key}",
         }
 
-        # Определяем валидное имя файла и MIME-тип для multipart/form-data
         safe_filename = filename or "audio.webm"
         if not any(safe_filename.endswith(ext) for ext in [".wav", ".mp3", ".ogg", ".opus", ".webm", ".m4a", ".flac"]):
             safe_filename += ".webm"
@@ -121,7 +107,6 @@ class STTService:
                     return text
                 else:
                     logger.warning(f"Groq Whisper STT returned status {resp.status_code}: {resp.text}")
-                    # Попытка на whisper-large-v3, если turbo недоступен
                     if "whisper-large-v3-turbo" in data["model"]:
                         data["model"] = "whisper-large-v3"
                         resp2 = await client.post(url, headers=headers, files={"file": (safe_filename, audio_bytes, content_type or "audio/webm")}, data=data)
@@ -144,7 +129,6 @@ class STTService:
             "Authorization": f"Api-Key {api_key}",
             "x-folder-id": folder_id
         }
-        # Формат: oggopus, lpcm
         audio_format = "oggopus" if "ogg" in content_type or "opus" in content_type else "lpcm"
         params = {
             "lang": "ru-RU",
