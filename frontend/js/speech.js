@@ -65,7 +65,6 @@ class VoiceAssistantSpeech {
 
     this.recognition.onerror = (event) => {
       console.warn('Web Speech API error:', event.error);
-      // Не прерываем сразу, если работает MediaRecorder — он запишет аудио и отправит на Whisper STT
       if (!this.mediaRecorder) {
         this.isListening = false;
         if (this.onErrorCallback) {
@@ -79,7 +78,6 @@ class VoiceAssistantSpeech {
     };
 
     this.recognition.onend = () => {
-      // Завершение WebSpeech
       if (this.isListening && !this.mediaRecorder) {
         this.isListening = false;
         if (this.onResultCallback && this.webSpeechResult) {
@@ -108,7 +106,6 @@ class VoiceAssistantSpeech {
       this.audioChunks = [];
       await this.startMicStream();
 
-      // Запускаем MediaRecorder для резервной или основной записи под Whisper STT
       if (window.MediaRecorder && this.mediaStream) {
         try {
           const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -136,7 +133,6 @@ class VoiceAssistantSpeech {
         this.onStatusChangeCallback('listening');
       }
 
-      // Если поддерживается WebSpeech, запускаем для live превью
       if (this.recognition) {
         try {
           this.recognition.start();
@@ -196,7 +192,6 @@ class VoiceAssistantSpeech {
     this.mediaRecorder = null;
     this.audioChunks = [];
 
-    // Если аудио слишком короткое (< 0.2 сек)
     if (audioBlob.size < 500) {
       if (this.webSpeechResult && this.onResultCallback) {
         this.onResultCallback(this.webSpeechResult, true);
@@ -205,7 +200,6 @@ class VoiceAssistantSpeech {
       return;
     }
 
-    // Отправляем аудиозапись на наш бэкенд Whisper STT
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'speech.webm');
@@ -231,7 +225,6 @@ class VoiceAssistantSpeech {
       console.warn('Backend STT failed, falling back to Web Speech result:', err);
     }
 
-    // Если бэкенд не ответил или вернул пустоту, используем результат браузерного WebSpeech
     if (this.webSpeechResult && this.onResultCallback) {
       this.onResultCallback(this.webSpeechResult, true);
     }

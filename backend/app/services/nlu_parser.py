@@ -50,7 +50,6 @@ WORDS_TO_HOURS = {
 def parse_russian_time(text: str) -> Optional[str]:
     lower = text.lower()
 
-    # 1. Colon format HH:MM
     match_colon = re.search(r"\b([0-1]?[0-9]|2[0-3]):([0-5][0-9])\b", lower)
     if match_colon:
         hours = int(match_colon.group(1))
@@ -315,7 +314,6 @@ def clean_search_query(text: str) -> str:
 def parse_user_intent(text: str) -> Dict[str, Any]:
     lower = text.lower().strip()
 
-    # 1. Greetings & Pleasantries
     if any(re.search(rf"\b{g}\b", lower) for g in ["привет", "здравствуй", "здравствуйте", "салют", "доброе утро", "добрый день", "добрый вечер", "хай", "хеллоу"]):
         return {"intent": "CHAT_GREETING", "raw_text": text}
 
@@ -325,7 +323,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
     if any(k in lower for k in ["что ты умеешь", "что можешь", "помощь", "команды", "как пользоваться", "help"]):
         return {"intent": "HELP", "raw_text": text}
 
-    # 2. Complete event
     if any(k in lower for k in ["отметь выполненной", "отметь задачу выполненной", "выполнил задачу", "заверши задачу", "сделано", "отметь как сделано", "отметь задачу"]):
         query = clean_search_query(text)
         return {
@@ -334,7 +331,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
             "raw_text": text,
         }
 
-    # 3. Delete event
     if any(k in lower for k in ["удали", "удалить", "отмени", "отменить", "стереть"]):
         query = clean_search_query(text)
         return {
@@ -343,7 +339,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
             "raw_text": text,
         }
 
-    # 4. Reschedule event
     if any(k in lower for k in ["перенеси", "перенести", "сдвинь", "поменяй время", "отложи"]):
         target_date = parse_russian_date(lower)
         target_time = parse_russian_time(lower)
@@ -354,7 +349,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
             "raw_text": text,
         }
 
-    # 5. Search events
     if any(k in lower for k in [
         "найди", "найти", "поищи", "когда у меня была", "когда была", "когда-то ставил", "найди ее", "найди задачу", "найди встречу"
     ]):
@@ -365,7 +359,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
             "raw_text": text,
         }
 
-    # 6. List events
     list_keywords = [
         "что у меня", "какие планы", "покажи мои", "какие задачи", "есть ли у меня",
         "что запланировано", "планы на", "список задач", "список", "расписание",
@@ -400,7 +393,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
             "raw_text": text,
         }
 
-    # 7. Create event vs Incomplete / Unknown
     is_meeting = any(k in lower for k in [
         "встреча", "созвон", "планёрка", "планерка", "демо", "встречу", "встретиться",
         "беседа", "беседу", "беседку", "поболтать", "поговорить", "митинг", "синк",
@@ -420,7 +412,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
 
     title = clean_title(text, event_type, extracted_date, extracted_time)
 
-    # Check attendee
     attendee = None
     attendee_match = re.search(
         r"\b(?:с|со|для)\s+(?:моим|моей|нашим|своим)?\s*(?:братом|братиком|другом|подругой|коллегой|партнером|партнёром|клиентом)?\s*([А-Яа-яA-Za-z]+)",
@@ -434,7 +425,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
                 cand = cand[:-2]
             attendee = cand
 
-    # Check if there is actual substantive content for title
     meaningful_words = [
         w for w in re.sub(r"[^\w\s]", "", title.lower()).split()
         if w not in [
@@ -445,7 +435,6 @@ def parse_user_intent(text: str) -> Dict[str, Any]:
     ]
 
     if not meaningful_words:
-        # Fragment like "хочу в девть часов" or "в 9 часов" without action
         if extracted_time or extracted_date:
             return {
                 "intent": "INCOMPLETE",

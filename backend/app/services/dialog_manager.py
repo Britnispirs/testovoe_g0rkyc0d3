@@ -341,7 +341,6 @@ class DialogManager:
             target_time = parsed.get("time")
             attendees = parsed.get("attendees")
 
-            # Validate title has substance
             meaningful = [
                 w for w in re.sub(r"[^\w\s]", "", title.lower()).split()
                 if w not in [

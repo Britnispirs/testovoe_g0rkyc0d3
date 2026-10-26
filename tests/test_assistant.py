@@ -101,24 +101,20 @@ async def test_search_and_conflict():
 
 @pytest.mark.asyncio
 async def test_user_complaint_scenarios():
-    # Scenario 1: "хочу в девть часов" -> incomplete phrase, clarify and do not create task immediately
     res1 = await DialogManager.process_user_message("хочу в девть часов", session_id="user_flow_1")
     assert res1.requires_clarification is True
     assert "09:00" in res1.reply_text
 
-    # Follow up specifies task
     res1_follow = await DialogManager.process_user_message("сделать отчет", session_id="user_flow_1")
     assert res1_follow.requires_clarification is False
     assert res1_follow.affected_events is not None
     assert res1_follow.affected_events[0].time == "09:00"
     assert "отчет" in res1_follow.affected_events[0].title.lower()
 
-    # Scenario 2: "покажи задачи на седня мне" -> list events, not create event
     res2 = await DialogManager.process_user_message("покажи задачи на седня мне", session_id="user_flow_2")
     assert res2.action is not None
     assert res2.action.action_type == "LIST"
 
-    # Scenario 3: "поставь мне беседку с моим братиком иваном на часов 11" -> meeting at 11:00 with Ivan
     res3 = await DialogManager.process_user_message("поставь мне беседку с моим братиком иваном на часов 11", session_id="user_flow_3")
     assert res3.affected_events is not None
     ev = res3.affected_events[0]
