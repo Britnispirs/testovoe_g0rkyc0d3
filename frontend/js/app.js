@@ -11,6 +11,38 @@ document.addEventListener('DOMContentLoaded', () => {
   let calMonth = now.getMonth();
   let selectedDateStr = now.toISOString().split('T')[0];
 
+  if (window.vkBridge) {
+    vkBridge.send('VKWebAppInit').then(() => {
+      vkBridge.send('VKWebAppGetUserInfo').then((user) => {
+        if (user && user.first_name) {
+          const brandText = document.querySelector('.brand-text h1');
+          if (brandText) brandText.textContent = user.first_name;
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+  }
+
+  if (window.Telegram && window.Telegram.WebApp) {
+    try {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+      const user = window.Telegram.WebApp.initDataUnsafe?.user;
+      if (user && user.first_name) {
+        const brandText = document.querySelector('.brand-text h1');
+        if (brandText) brandText.textContent = user.first_name;
+      }
+    } catch (e) {}
+  }
+
+  function triggerHaptic() {
+    if (window.vkBridge) {
+      try { vkBridge.send('VKWebAppTapticImpactOccurred', { style: 'medium' }); } catch (e) {}
+    }
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      try { window.Telegram.WebApp.HapticFeedback.impactOccurred('medium'); } catch (e) {}
+    }
+  }
+
   let sessionId = sessionStorage.getItem('assistant_session_id');
   if (!sessionId) {
     sessionId = 'session_' + Math.random().toString(36).substring(2, 9);
@@ -690,6 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   micBtn.addEventListener('click', () => {
+    triggerHaptic();
     speech.toggleListening();
   });
 
