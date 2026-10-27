@@ -11,17 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let calMonth = now.getMonth();
   let selectedDateStr = now.toISOString().split('T')[0];
 
-  if (window.vkBridge) {
-    vkBridge.send('VKWebAppInit').then(() => {
-      vkBridge.send('VKWebAppGetUserInfo').then((user) => {
-        if (user && user.first_name) {
-          const brandText = document.querySelector('.brand-text h1');
-          if (brandText) brandText.textContent = user.first_name;
-        }
-      }).catch(() => {});
-    }).catch(() => {});
-  }
-
   if (window.Telegram && window.Telegram.WebApp) {
     try {
       window.Telegram.WebApp.ready();
@@ -35,9 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function triggerHaptic() {
-    if (window.vkBridge) {
-      try { vkBridge.send('VKWebAppTapticImpactOccurred', { style: 'medium' }); } catch (e) {}
-    }
     if (window.Telegram?.WebApp?.HapticFeedback) {
       try { window.Telegram.WebApp.HapticFeedback.impactOccurred('medium'); } catch (e) {}
     }
