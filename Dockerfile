@@ -10,6 +10,10 @@ RUN pip install --no-cache-dir -r ./requirements.txt
 
 COPY backend ./backend
 COPY frontend ./frontend
+COPY bots ./bots
+COPY tests ./tests
+
+RUN mkdir -p /app/backend/data
 
 EXPOSE 8000
 

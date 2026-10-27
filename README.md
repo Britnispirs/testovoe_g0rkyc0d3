@@ -38,7 +38,15 @@
    - Отметка выполнения: «Отметь задачу про договор выполненной»
    - Удаление: «Удали задачу про презентацию»
 
-7. **Двойной интерфейс**:
+7. **Интеллектуальное распознавание речи (STT)**:
+   - Поддержка распознавания голоса через **Groq Whisper** (`whisper-large-v3-turbo` / `whisper-large-v3`), Web Speech API, а также резервные провайдеры (Yandex SpeechKit, OpenAI Whisper).
+   - Запись голоса в браузере через MediaRecorder и загрузка готовых аудиофайлов (.ogg, .wav, .mp3, .m4a).
+
+8. **Telegram-бот**:
+   - Полнофункциональный бот в `bots/telegram` на базе `aiogram 3.x`.
+   - Поддерживает текстовые и голосовые сообщения с мгновенным распознаванием и управлением задачами.
+
+9. **Двойной интерфейс**:
    - Режим **Списка** с разделением на активные дела и блок «Выполненные».
    - Интерактивный **Календарь** с навигацией по месяцам, цветовыми маркерами событий и просмотром планов по дням.
    - Экспорт расписания в формат `.ics` для Apple Calendar / Google Calendar.
@@ -46,8 +54,6 @@
 ---
 
 ## Архитектура проекта
-
-Проект спроектирован с четким разделением ответственности компонентов:
 
 ```
 ├── backend/
@@ -59,22 +65,32 @@
 │   │   │   └── event.py         # Pydantic v2 модели и схемы данных
 │   │   ├── api/
 │   │   │   ├── events.py        # REST CRUD, фильтры, поиск, экспорт iCal (.ics)
-│   │   │   └── assistant.py     # Эндпоинты диалога (/api/assistant/chat, сброс сессии)
+│   │   │   ├── assistant.py     # Эндпоинты диалога (/api/assistant/chat, сброс сессии)
+│   │   │   └── voice.py         # Обработка аудио и транскрибация (/api/voice/process)
 │   │   └── services/
 │   │       ├── nlu_parser.py    # Извлечение намерений, дат, времени и участников
 │   │       ├── dialog_manager.py# Управление контекстом, уточнения, конфликты
 │   │       ├── search_service.py# Гибридный поиск (FTS5 + синонимы + стемминг)
-│   │       └── llm_client.py    # LLM-адаптер (Groq / Llama) с fallback на NLU
+│   │       ├── stt_service.py   # Groq Whisper / Yandex / OpenAI STT
+│   │       └── llm_client.py    # LLM-адаптер (Groq / Mistral) с fallback на NLU
 │   ├── data/                    # База данных SQLite и seed_events.csv
 │   └── requirements.txt
+├── bots/
+│   └── telegram/                # Telegram-бот на aiogram 3.x
 ├── frontend/
 │   ├── index.html               # Разметка интерфейса и модальных окон
 │   ├── css/style.css            # Монохромные строгие стили без градиентов
 │   └── js/
-│       ├── speech.js            # Web Speech API (STT/TTS) + Web Audio API visualizer
+│       ├── speech.js            # Web Speech API + Whisper Audio recorder
 │       └── app.js               # Клиентская логика, реактивность, календарь, чат
+├── deploy/
+│   ├── setup_vps.sh             # Автоматическая настройка VPS в 1 команду
+│   ├── nginx.conf               # Конфигурация Nginx reverse proxy
+│   ├── Caddyfile                # Автоматический HTTPS через Caddy
+│   └── docker-compose.ssl.yml   # Compose-файл с Caddy SSL
 ├── tests/
-│   └── test_assistant.py        # Pytest сьют (NLU, диалог, поиск, конфликты)
+│   ├── test_assistant.py        # Тесты NLU, поиска, конфликтов
+│   └── test_voice.py            # Тесты STT и голосового API
 ├── Dockerfile
 ├── docker-compose.yml
 └── .dockerignore
@@ -82,18 +98,58 @@
 
 ---
 
-## Быстрый запуск
+## Развертывание на VPS
 
-### Вариант 1. Через Docker Compose (рекомендуемый)
+### Вариант 1. Быстрый запуск через Docker Compose
 
+1. **Клонируйте репозиторий на сервер**:
+```bash
+git clone https://github.com/Britnispirs/testovoe_g0rkyc0d3.git
+cd testovoe_g0rkyc0d3
+```
+
+2. **Создайте и заполните файл `.env`**:
+```bash
+cp .env.example .env
+nano .env
+```
+Укажите:
+- `GROQ_API_KEY` — для LLM и быстрого Whisper STT
+- `TELEGRAM_BOT_TOKEN` — токен бота от @BotFather (опционально)
+
+3. **Запустите контейнеры**:
 ```bash
 docker compose up -d --build
 ```
+Бэкенд с веб-интерфейсом и Telegram-бот запустятся автоматически. Бэкенд доступен на порту `8000`.
 
-Для остановки:
+---
+
+### Автоматический запуск через скрипт `deploy/setup_vps.sh`
+
+Для нового сервера на Ubuntu / Debian:
 ```bash
-docker compose down
+sudo bash deploy/setup_vps.sh
 ```
+Скрипт установит Docker, настроит UFW фаервол, скопирует `.env` и запустит контейнеры.
+
+---
+
+### Настройка HTTPS (Важно для микрофона в браузере)
+
+> Браузеры (Chrome, Safari, Firefox) и Telegram WebApp блокируют доступ к микрофону на публичных IP без HTTPS.
+
+#### Способ A. Автоматический HTTPS через Caddy (рекомендуется)
+Если у вас есть домен (например, `assistant.yourdomain.com`):
+1. Добавьте в `.env`: `DOMAIN=assistant.yourdomain.com`
+2. Запустите стек с Caddy:
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.ssl.yml up -d
+```
+Caddy автоматически выпустит бесплатный Let's Encrypt SSL-сертификат и настроит редирект с HTTP на HTTPS.
+
+#### Способ B. Nginx + Certbot
+Скопируйте `deploy/nginx.conf` в `/etc/nginx/sites-available/` и получите сертификат через `certbot --nginx`.
 
 ---
 

@@ -16,8 +16,9 @@ async def main():
     )
 
     if not TELEGRAM_BOT_TOKEN:
-        logging.error("TELEGRAM_BOT_TOKEN is not configured in environment variables.")
-        sys.exit(1)
+        logging.warning("TELEGRAM_BOT_TOKEN is not configured. Telegram bot is idle. Set TELEGRAM_BOT_TOKEN in .env to activate.")
+        while True:
+            await asyncio.sleep(3600)
 
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     dp = Dispatcher()

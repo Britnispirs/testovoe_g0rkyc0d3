@@ -1,0 +1,6 @@
+{$DOMAIN:localhost} {
+    request_body {
+        max_size 25MB
+    }
+    reverse_proxy app:8000
+}
