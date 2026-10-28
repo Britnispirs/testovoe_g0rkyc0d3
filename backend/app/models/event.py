@@ -43,7 +43,9 @@ class EventUpdate(BaseModel):
 class EventItem(EventBase):
     id: int
     created_at: str
-    model_config = ConfigDict(from_attributes=True)
+
+    class Config:
+        from_attributes = True
 
 
 class EventFilter(BaseModel):
