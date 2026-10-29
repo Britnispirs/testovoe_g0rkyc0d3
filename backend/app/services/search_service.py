@@ -1,7 +1,10 @@
 import re
 from typing import List, Dict, Any, Tuple
 from backend.app.models.event import EventItem
-from backend.app.database import db_list_events, db_search_fts
+from backend.app.database import db_list_events, db_search_ft
+from typing import Optional, List
+
+
 
 SYNONYM_CLUSTERS = [
     {"договор", "контракт", "соглашение", "согласование", "акт"},
