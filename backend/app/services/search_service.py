@@ -1,8 +1,7 @@
 import re
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from backend.app.models.event import EventItem
-from backend.app.database import db_list_events, db_search_ft
-from typing import Optional, List
+from backend.app.database import db_list_events, db_search_fts
 
 
 
