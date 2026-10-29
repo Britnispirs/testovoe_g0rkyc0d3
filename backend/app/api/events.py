@@ -1,6 +1,6 @@
 from typing import List, Optional
-from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Query, Response
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, HTTPException, Query, Response, Depends
 from backend.app.models.event import (
     EventItem,
     EventCreate,
@@ -8,6 +8,8 @@ from backend.app.models.event import (
     EventFilter,
     EventType,
 )
+from backend.app.models.user import UserItem
+from backend.app.auth import get_current_user_optional
 from backend.app.database import (
     db_list_events,
     db_create_event,
@@ -29,28 +31,37 @@ def list_events_endpoint(
     is_completed: Optional[bool] = None,
     query: Optional[str] = None,
     limit: int = Query(default=100, ge=1, le=500),
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
 ):
+    user_id = current_user.id if current_user else None
     filters = EventFilter(
         type=type,
         start_date=start_date,
         end_date=end_date,
         is_completed=is_completed,
         query=query,
+        user_id=user_id,
     )
-    return db_list_events(filters, limit=limit)
+    return db_list_events(filters, limit=limit, user_id=user_id)
 
 
 @router.post("", response_model=EventItem, status_code=201)
-def create_event_endpoint(event_data: EventCreate):
-    return db_create_event(event_data)
+def create_event_endpoint(
+    event_data: EventCreate,
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
+):
+    user_id = current_user.id if current_user else None
+    return db_create_event(event_data, user_id=user_id)
 
 
 @router.get("/search", response_model=List[EventItem])
 def search_events_endpoint(
     q: str = Query(..., min_length=1),
     limit: int = Query(default=20, ge=1, le=100),
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
 ):
-    return hybrid_search_events(q, limit=limit)
+    user_id = current_user.id if current_user else None
+    return hybrid_search_events(q, limit=limit, user_id=user_id)
 
 
 @router.get("/conflicts", response_model=List[EventItem])
@@ -58,13 +69,18 @@ def check_conflicts_endpoint(
     date: str = Query(...),
     time: str = Query(...),
     exclude_id: Optional[int] = None,
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
 ):
-    return db_find_conflicts(date, time, exclude_id)
+    user_id = current_user.id if current_user else None
+    return db_find_conflicts(date, time, exclude_id, user_id=user_id)
 
 
 @router.get("/export.ics")
-def export_ical_endpoint():
-    events = db_list_events(limit=500)
+def export_ical_endpoint(
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
+):
+    user_id = current_user.id if current_user else None
+    events = db_list_events(limit=500, user_id=user_id)
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -92,7 +108,7 @@ def export_ical_endpoint():
         lines.extend([
             "BEGIN:VEVENT",
             f"UID:event-{ev.id}@voice-assistant.local",
-            f"DTSTAMP:{datetime.utcnow().strftime('%Y%m%dT%H%M00Z')}",
+            f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M00Z')}",
             f"DTSTART:{dtstart}",
             f"DTEND:{dtend}",
             f"SUMMARY:{summary}",
@@ -111,33 +127,50 @@ def export_ical_endpoint():
 
 
 @router.get("/{event_id}", response_model=EventItem)
-def get_event_endpoint(event_id: int):
-    event = db_get_event(event_id)
+def get_event_endpoint(
+    event_id: int,
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
+):
+    user_id = current_user.id if current_user else None
+    event = db_get_event(event_id, user_id=user_id)
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
     return event
 
 
 @router.put("/{event_id}", response_model=EventItem)
-def update_event_endpoint(event_id: int, update_data: EventUpdate):
-    event = db_update_event(event_id, update_data)
+def update_event_endpoint(
+    event_id: int,
+    update_data: EventUpdate,
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
+):
+    user_id = current_user.id if current_user else None
+    event = db_update_event(event_id, update_data, user_id=user_id)
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
     return event
 
 
 @router.delete("/{event_id}", status_code=200)
-def delete_event_endpoint(event_id: int):
-    success = db_delete_event(event_id)
+def delete_event_endpoint(
+    event_id: int,
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
+):
+    user_id = current_user.id if current_user else None
+    success = db_delete_event(event_id, user_id=user_id)
     if not success:
         raise HTTPException(status_code=404, detail="Событие не найдено")
     return {"status": "success", "deleted_id": event_id}
 
 
 @router.post("/{event_id}/toggle", response_model=EventItem)
-def toggle_event_endpoint(event_id: int):
-    event = db_get_event(event_id)
+def toggle_event_endpoint(
+    event_id: int,
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
+):
+    user_id = current_user.id if current_user else None
+    event = db_get_event(event_id, user_id=user_id)
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
-    updated = db_update_event(event_id, EventUpdate(is_completed=not event.is_completed))
+    updated = db_update_event(event_id, EventUpdate(is_completed=not event.is_completed), user_id=user_id)
     return updated

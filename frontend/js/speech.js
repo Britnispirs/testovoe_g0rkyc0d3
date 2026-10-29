@@ -205,8 +205,12 @@ class VoiceAssistantSpeech {
       formData.append('audio', audioBlob, 'speech.webm');
       formData.append('language', 'ru');
 
+      const token = localStorage.getItem('assistant_token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
       const response = await fetch('/api/voice/transcribe', {
         method: 'POST',
+        headers,
         body: formData
       });
 
@@ -241,8 +245,12 @@ class VoiceAssistantSpeech {
 
     try {
       if (this.onStatusChangeCallback) this.onStatusChangeCallback('processing');
+      const token = localStorage.getItem('assistant_token');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
       const response = await fetch('/api/voice/transcribe', {
         method: 'POST',
+        headers,
         body: formData
       });
 

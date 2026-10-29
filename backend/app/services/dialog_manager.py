@@ -61,7 +61,11 @@ def format_russian_date_spoken(date_str: str) -> str:
 
 class DialogManager:
     @staticmethod
-    async def process_user_message(message: str, session_id: str = "default") -> AssistantResponse:
+    async def process_user_message(
+        message: str,
+        session_id: str = "default",
+        user_id: Optional[int] = None,
+    ) -> AssistantResponse:
         session = get_session(session_id)
         text = message.strip()
 
@@ -98,10 +102,10 @@ class DialogManager:
                 session["draft_event"] = None
 
                 if draft.type == EventType.MEETING and draft.time:
-                    conflicts = db_find_conflicts(draft.date, draft.time)
+                    conflicts = db_find_conflicts(draft.date, draft.time, user_id=user_id)
                     if conflicts:
                         conflict_name = conflicts[0].title
-                        created = db_create_event(draft)
+                        created = db_create_event(draft, user_id=user_id)
                         session["last_event_id"] = created.id
                         reply = (
                             f"Встреча «{created.title}» добавлена на {format_russian_date_spoken(created.date)} в {created.time}. "
@@ -118,7 +122,7 @@ class DialogManager:
                             ),
                         )
 
-                created = db_create_event(draft)
+                created = db_create_event(draft, user_id=user_id)
                 session["last_event_id"] = created.id
                 time_str = f" в {created.time}" if created.time else ""
                 reply = f"Отлично! Добавил встречу «{created.title}» на {format_russian_date_spoken(created.date)}{time_str}."
@@ -182,14 +186,14 @@ class DialogManager:
             query = parsed.get("query", "")
             target_event = None
             if query:
-                found = hybrid_search_events(query, limit=3)
+                found = hybrid_search_events(query, limit=3, user_id=user_id)
                 if found:
                     target_event = found[0]
             elif session.get("last_event_id"):
-                target_event = db_get_event(session["last_event_id"])
+                target_event = db_get_event(session["last_event_id"], user_id=user_id)
 
             if target_event:
-                updated = db_update_event(target_event.id, EventUpdate(is_completed=True))
+                updated = db_update_event(target_event.id, EventUpdate(is_completed=True), user_id=user_id)
                 session["last_event_id"] = updated.id
                 reply = f"Готово! Задача «{updated.title}» отмечена как выполненная."
                 return AssistantResponse(
@@ -207,14 +211,14 @@ class DialogManager:
             query = parsed.get("query", "")
             target_event = None
             if query:
-                found = hybrid_search_events(query, limit=3)
+                found = hybrid_search_events(query, limit=3, user_id=user_id)
                 if found:
                     target_event = found[0]
             elif session.get("last_event_id"):
-                target_event = db_get_event(session["last_event_id"])
+                target_event = db_get_event(session["last_event_id"], user_id=user_id)
 
             if target_event:
-                db_delete_event(target_event.id)
+                db_delete_event(target_event.id, user_id=user_id)
                 session["last_event_id"] = None
                 reply = f"Запись «{target_event.title}» успешно удалена."
                 return AssistantResponse(
@@ -232,14 +236,14 @@ class DialogManager:
             new_time = parsed.get("time")
             last_id = session.get("last_event_id")
             if last_id:
-                ev = db_get_event(last_id)
+                ev = db_get_event(last_id, user_id=user_id)
                 if ev:
                     update_kwargs = {}
                     if new_date:
                         update_kwargs["date"] = new_date
                     if new_time:
                         update_kwargs["time"] = new_time
-                    updated = db_update_event(ev.id, EventUpdate(**update_kwargs))
+                    updated = db_update_event(ev.id, EventUpdate(**update_kwargs), user_id=user_id)
                     time_info = f" на {updated.time}" if updated.time else ""
                     reply = f"Перенес «{updated.title}» на {format_russian_date_spoken(updated.date)}{time_info}."
                     return AssistantResponse(
@@ -255,7 +259,7 @@ class DialogManager:
 
         if intent == "SEARCH_EVENTS":
             query = parsed.get("query", "")
-            results = hybrid_search_events(query, limit=10) if query else []
+            results = hybrid_search_events(query, limit=10, user_id=user_id) if query else []
 
             if results:
                 lines = []
@@ -301,7 +305,7 @@ class DialogManager:
                 filters = EventFilter(start_date=target_date, end_date=target_date, type=event_type)
                 period_title = f"на {format_russian_date_spoken(target_date)}"
 
-            events = db_list_events(filters, limit=25)
+            events = db_list_events(filters, limit=25, user_id=user_id)
             if events:
                 lines = []
                 for e in events:
@@ -389,7 +393,7 @@ class DialogManager:
                 )
 
             if event_type == EventType.MEETING and target_time:
-                conflicts = db_find_conflicts(target_date, target_time)
+                conflicts = db_find_conflicts(target_date, target_time, user_id=user_id)
                 new_event = db_create_event(
                     EventCreate(
                         type=event_type,
@@ -397,7 +401,9 @@ class DialogManager:
                         date=target_date,
                         time=target_time,
                         attendees=attendees,
-                    )
+                        user_id=user_id,
+                    ),
+                    user_id=user_id,
                 )
                 session["last_event_id"] = new_event.id
 
@@ -425,7 +431,9 @@ class DialogManager:
                     date=target_date,
                     time=target_time,
                     attendees=attendees,
-                )
+                    user_id=user_id,
+                ),
+                user_id=user_id,
             )
             session["last_event_id"] = created.id
 

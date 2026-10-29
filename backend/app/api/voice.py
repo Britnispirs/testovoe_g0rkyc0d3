@@ -1,11 +1,13 @@
 import logging
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 
 from backend.app.services.stt_service import STTService
 from backend.app.services.dialog_manager import DialogManager
 from backend.app.models.event import AssistantResponse
+from backend.app.models.user import UserItem
+from backend.app.auth import get_current_user_optional
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +56,8 @@ async def transcribe_audio_endpoint(
 @router.post("/process", response_model=VoiceProcessResponse)
 async def process_voice_message_endpoint(
     audio: UploadFile = File(..., description="Голосовое сообщение"),
-    session_id: str = Form(default="default", description="Идентификатор сессии диалога")
+    session_id: str = Form(default="default", description="Идентификатор сессии диалога"),
+    current_user: Optional[UserItem] = Depends(get_current_user_optional),
 ):
     try:
         audio_bytes = await audio.read()
@@ -77,9 +80,11 @@ async def process_voice_message_endpoint(
                 requires_clarification=False
             )
 
+        user_id = current_user.id if current_user else None
         assistant_res = await DialogManager.process_user_message(
             message=text,
-            session_id=session_id
+            session_id=session_id,
+            user_id=user_id,
         )
 
         return VoiceProcessResponse(

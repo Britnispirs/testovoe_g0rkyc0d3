@@ -24,6 +24,7 @@ class EventBase(BaseModel):
     description: Optional[str] = Field(None, description="Подробное описание или заметка")
     attendees: Optional[str] = Field(None, description="Участники (для встреч или звонков)")
     is_completed: bool = Field(default=False, description="Статус выполнения")
+    user_id: Optional[int] = Field(default=None, description="ID пользователя-владельца")
 
 
 class EventCreate(EventBase):
@@ -44,8 +45,7 @@ class EventItem(EventBase):
     id: int
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventFilter(BaseModel):
@@ -54,6 +54,7 @@ class EventFilter(BaseModel):
     end_date: Optional[str] = None
     is_completed: Optional[bool] = None
     query: Optional[str] = None
+    user_id: Optional[int] = None
 
 
 class AssistantMessage(BaseModel):

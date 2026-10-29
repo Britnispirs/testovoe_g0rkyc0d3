@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 
 from backend.app.database import init_db
 from backend.app.seed import seed_database
+from backend.app.api.auth import router as auth_router
 from backend.app.api.events import router as events_router
 from backend.app.api.assistant import router as assistant_router
 from backend.app.api.voice import router as voice_router
@@ -24,6 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(events_router)
 app.include_router(assistant_router)
 app.include_router(voice_router)

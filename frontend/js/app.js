@@ -40,6 +40,41 @@ document.addEventListener('DOMContentLoaded', () => {
   const ttsToggleBtn = document.getElementById('ttsToggleBtn');
   const resetSessionBtn = document.getElementById('resetSessionBtn');
 
+  // Auth DOM Elements
+  const openAuthModalBtn = document.getElementById('openAuthModalBtn');
+  const userProfileBar = document.getElementById('userProfileBar');
+  const userEmailText = document.getElementById('userEmailText');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  const authModal = document.getElementById('authModal');
+  const authModalTitle = document.getElementById('authModalTitle');
+  const closeAuthModalBtn = document.getElementById('closeAuthModalBtn');
+  const tabLoginBtn = document.getElementById('tabLoginBtn');
+  const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+  const authAlert = document.getElementById('authAlert');
+
+  const loginForm = document.getElementById('loginForm');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+  const toForgotPasswordLink = document.getElementById('toForgotPasswordLink');
+
+  const registerForm = document.getElementById('registerForm');
+  const registerEmail = document.getElementById('registerEmail');
+  const registerPassword = document.getElementById('registerPassword');
+  const registerSubmitBtn = document.getElementById('registerSubmitBtn');
+
+  const forgotPasswordView = document.getElementById('forgotPasswordView');
+  const forgotStep1 = document.getElementById('forgotStep1');
+  const forgotStep2 = document.getElementById('forgotStep2');
+  const forgotEmail = document.getElementById('forgotEmail');
+  const sendResetCodeBtn = document.getElementById('sendResetCodeBtn');
+  const resetCode = document.getElementById('resetCode');
+  const newPassword = document.getElementById('newPassword');
+  const confirmResetPasswordBtn = document.getElementById('confirmResetPasswordBtn');
+  const backToLoginBtn1 = document.getElementById('backToLoginBtn1');
+  const backToLoginBtn2 = document.getElementById('backToLoginBtn2');
+
   const audioVisualizer = document.getElementById('audioVisualizer');
   const micBtn = document.getElementById('micBtn');
   const voiceStatus = document.getElementById('voiceStatus');
@@ -171,6 +206,270 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- Auth Session & Token Management ---
+  function getAuthToken() {
+    return localStorage.getItem('assistant_token');
+  }
+
+  function getAuthUser() {
+    try {
+      const u = localStorage.getItem('assistant_user');
+      return u ? JSON.parse(u) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setAuthSession(token, user) {
+    if (token) {
+      localStorage.setItem('assistant_token', token);
+    } else {
+      localStorage.removeItem('assistant_token');
+    }
+    if (user) {
+      localStorage.setItem('assistant_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('assistant_user');
+    }
+    updateAuthUI();
+  }
+
+  function updateAuthUI() {
+    const user = getAuthUser();
+    if (user && user.email) {
+      if (openAuthModalBtn) openAuthModalBtn.style.display = 'none';
+      if (userProfileBar) userProfileBar.style.display = 'flex';
+      if (userEmailText) userEmailText.textContent = user.email;
+    } else {
+      if (openAuthModalBtn) openAuthModalBtn.style.display = 'flex';
+      if (userProfileBar) userProfileBar.style.display = 'none';
+    }
+  }
+
+  async function authFetch(url, options = {}) {
+    options.headers = options.headers || {};
+    const token = getAuthToken();
+    if (token) {
+      if (options.headers instanceof Headers) {
+        options.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        options.headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    const res = await fetch(url, options);
+    if (res.status === 401 && token) {
+      setAuthSession(null, null);
+      showToast('Сессия завершена. Войдите снова.', 'warning');
+      openAuthModal('login');
+    }
+    return res;
+  }
+
+  function hideAuthAlert() {
+    if (authAlert) {
+      authAlert.style.display = 'none';
+      authAlert.className = 'auth-alert';
+      authAlert.textContent = '';
+    }
+  }
+
+  function showAuthAlert(msg, type = 'error') {
+    if (authAlert) {
+      authAlert.textContent = msg;
+      authAlert.className = `auth-alert alert-${type}`;
+      authAlert.style.display = 'block';
+    }
+  }
+
+  function openAuthModal(tab = 'login') {
+    hideAuthAlert();
+    if (!authModal) return;
+    authModal.style.display = 'flex';
+
+    const tabsContainer = document.getElementById('authTabs');
+    if (tab === 'login') {
+      if (authModalTitle) authModalTitle.textContent = 'Вход в аккаунт';
+      if (tabLoginBtn) tabLoginBtn.classList.add('active');
+      if (tabRegisterBtn) tabRegisterBtn.classList.remove('active');
+      if (loginForm) loginForm.style.display = 'flex';
+      if (registerForm) registerForm.style.display = 'none';
+      if (forgotPasswordView) forgotPasswordView.style.display = 'none';
+      if (tabsContainer) tabsContainer.style.display = 'flex';
+      if (loginEmail) loginEmail.focus();
+    } else if (tab === 'register') {
+      if (authModalTitle) authModalTitle.textContent = 'Регистрация';
+      if (tabRegisterBtn) tabRegisterBtn.classList.add('active');
+      if (tabLoginBtn) tabLoginBtn.classList.remove('active');
+      if (registerForm) registerForm.style.display = 'flex';
+      if (loginForm) loginForm.style.display = 'none';
+      if (forgotPasswordView) forgotPasswordView.style.display = 'none';
+      if (tabsContainer) tabsContainer.style.display = 'flex';
+      if (registerEmail) registerEmail.focus();
+    } else if (tab === 'forgot') {
+      if (authModalTitle) authModalTitle.textContent = 'Восстановление доступа';
+      if (loginForm) loginForm.style.display = 'none';
+      if (registerForm) registerForm.style.display = 'none';
+      if (forgotPasswordView) forgotPasswordView.style.display = 'flex';
+      if (tabsContainer) tabsContainer.style.display = 'none';
+      if (forgotStep1) forgotStep1.style.display = 'block';
+      if (forgotStep2) forgotStep2.style.display = 'none';
+      if (forgotEmail) forgotEmail.focus();
+    }
+  }
+
+  function closeAuthModal() {
+    if (authModal) authModal.style.display = 'none';
+    hideAuthAlert();
+  }
+
+  if (openAuthModalBtn) openAuthModalBtn.addEventListener('click', () => openAuthModal('login'));
+  if (closeAuthModalBtn) closeAuthModalBtn.addEventListener('click', closeAuthModal);
+  if (tabLoginBtn) tabLoginBtn.addEventListener('click', () => openAuthModal('login'));
+  if (tabRegisterBtn) tabRegisterBtn.addEventListener('click', () => openAuthModal('register'));
+  if (toForgotPasswordLink) toForgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    openAuthModal('forgot');
+  });
+  if (backToLoginBtn1) backToLoginBtn1.addEventListener('click', () => openAuthModal('login'));
+  if (backToLoginBtn2) backToLoginBtn2.addEventListener('click', () => openAuthModal('login'));
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      setAuthSession(null, null);
+      showToast('Вы вышли из аккаунта', 'info');
+      loadEvents();
+      openAuthModal('login');
+    });
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAuthAlert();
+      loginSubmitBtn.disabled = true;
+      loginSubmitBtn.textContent = 'Вход...';
+
+      try {
+        const resp = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: loginEmail.value.trim(),
+            password: loginPassword.value
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.detail || 'Неверный email или пароль');
+        }
+        setAuthSession(data.access_token, data.user);
+        closeAuthModal();
+        loginForm.reset();
+        showToast(`Добро пожаловать, ${data.user.email}!`, 'success');
+        loadEvents();
+      } catch (err) {
+        showAuthAlert(err.message, 'error');
+      } finally {
+        loginSubmitBtn.disabled = false;
+        loginSubmitBtn.textContent = 'Войти';
+      }
+    });
+  }
+
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAuthAlert();
+      registerSubmitBtn.disabled = true;
+      registerSubmitBtn.textContent = 'Регистрация...';
+
+      try {
+        const resp = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: registerEmail.value.trim(),
+            password: registerPassword.value
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.detail || 'Ошибка регистрации');
+        }
+        setAuthSession(data.access_token, data.user);
+        closeAuthModal();
+        registerForm.reset();
+        showToast(`Аккаунт создан! Добро пожаловать!`, 'success');
+        loadEvents();
+      } catch (err) {
+        showAuthAlert(err.message, 'error');
+      } finally {
+        registerSubmitBtn.disabled = false;
+        registerSubmitBtn.textContent = 'Зарегистрироваться';
+      }
+    });
+  }
+
+  if (sendResetCodeBtn) {
+    sendResetCodeBtn.addEventListener('click', async () => {
+      const email = forgotEmail.value.trim();
+      if (!email) {
+        showAuthAlert('Введите email', 'error');
+        return;
+      }
+      sendResetCodeBtn.disabled = true;
+      sendResetCodeBtn.textContent = 'Отправка...';
+      try {
+        const resp = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await resp.json();
+        forgotStep1.style.display = 'none';
+        forgotStep2.style.display = 'block';
+        showAuthAlert(data.message || 'Проверьте почту для получения кода', 'success');
+      } catch (err) {
+        showAuthAlert('Ошибка отправки кода', 'error');
+      } finally {
+        sendResetCodeBtn.disabled = false;
+        sendResetCodeBtn.textContent = 'Отправить код';
+      }
+    });
+  }
+
+  if (confirmResetPasswordBtn) {
+    confirmResetPasswordBtn.addEventListener('click', async () => {
+      const email = forgotEmail.value.trim();
+      const code = resetCode.value.trim();
+      const pwd = newPassword.value;
+      if (!code || !pwd) {
+        showAuthAlert('Заполните код и новый пароль', 'error');
+        return;
+      }
+      confirmResetPasswordBtn.disabled = true;
+      confirmResetPasswordBtn.textContent = 'Сохранение...';
+      try {
+        const resp = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code, new_password: pwd })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.detail || 'Ошибка сброса пароля');
+        }
+        showToast('Пароль успешно изменен! Выполните вход.', 'success');
+        openAuthModal('login');
+      } catch (err) {
+        showAuthAlert(err.message, 'error');
+      } finally {
+        confirmResetPasswordBtn.disabled = false;
+        confirmResetPasswordBtn.textContent = 'Сохранить пароль';
+      }
+    });
+  }
+
   function appendDialogueBubble(text, sender = 'assistant', isConflict = false) {
     const bubble = document.createElement('div');
     bubble.className = `dialogue-bubble ${sender}-bubble ${isConflict ? 'conflict-bubble' : ''}`;
@@ -224,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingP.innerHTML = '<span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Обработка...';
 
     try {
-      const response = await fetch('/api/assistant/chat', {
+      const response = await authFetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -293,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
         url = `/api/events/search?q=${encodeURIComponent(currentSearchQuery.trim())}&limit=60`;
       }
 
-      const res = await fetch(url);
+      const res = await authFetch(url);
       if (!res.ok) throw new Error('Ошибка загрузки');
       const events = await res.json();
       currentEvents = events;
@@ -453,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!id) return;
 
     if (action === 'toggle') {
-      fetch(`/api/events/${id}/toggle`, { method: 'POST' })
+      authFetch(`/api/events/${id}/toggle`, { method: 'POST' })
         .then(res => res.json())
         .then(updated => {
           showToast(updated.is_completed ? 'Завершено' : 'Возвращено в работу', 'success');
@@ -465,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ev) openModalForEdit(ev);
     } else if (action === 'delete') {
       if (confirm('Удалить эту запись?')) {
-        fetch(`/api/events/${id}`, { method: 'DELETE' })
+        authFetch(`/api/events/${id}`, { method: 'DELETE' })
           .then(res => {
             if (res.ok) {
               showToast('Запись удалена', 'info');
@@ -761,9 +1060,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const exportIcsBtn = document.getElementById('exportIcsBtn');
+  if (exportIcsBtn) {
+    exportIcsBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const resp = await authFetch('/api/events/export.ics');
+        if (!resp.ok) throw new Error('Ошибка экспорта');
+        const blob = await resp.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'calendar.ics';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showToast('Календарь успешно экспортирован', 'success');
+      } catch (err) {
+        showToast('Не удалось экспортировать календарь', 'error');
+      }
+    });
+  }
+
   resetSessionBtn.addEventListener('click', async () => {
     try {
-      await fetch(`/api/assistant/reset-session?session_id=${encodeURIComponent(sessionId)}`, { method: 'POST' });
+      await authFetch(`/api/assistant/reset-session?session_id=${encodeURIComponent(sessionId)}`, { method: 'POST' });
       sessionId = 'session_' + Math.random().toString(36).substring(2, 9);
       sessionStorage.setItem('assistant_session_id', sessionId);
 
@@ -854,7 +1177,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let url = `/api/events/conflicts?date=${encodeURIComponent(dateVal)}&time=${encodeURIComponent(timeVal)}`;
       if (excludeId) url += `&exclude_id=${excludeId}`;
 
-      const res = await fetch(url);
+      const res = await authFetch(url);
       if (res.ok) {
         const conflicts = await res.json();
         if (conflicts && conflicts.length > 0) {
@@ -921,13 +1244,13 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let res;
       if (id) {
-        res = await fetch(`/api/events/${id}`, {
+        res = await authFetch(`/api/events/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
       } else {
-        res = await fetch('/api/events', {
+        res = await authFetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -946,5 +1269,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Check auth status on launch
+  async function initAuth() {
+    updateAuthUI();
+    const token = getAuthToken();
+    if (token) {
+      try {
+        const resp = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resp.ok) {
+          const user = await resp.json();
+          setAuthSession(token, user);
+        } else {
+          setAuthSession(null, null);
+          openAuthModal('login');
+        }
+      } catch (e) {
+        // network issue or offline, retain session
+      }
+    } else {
+      openAuthModal('login');
+    }
+  }
+
+  initAuth();
   loadEvents();
 });

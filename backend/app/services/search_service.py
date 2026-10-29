@@ -59,11 +59,11 @@ def calculate_semantic_similarity(query: str, target: str) -> float:
     return min(similarity, 1.0)
 
 
-def hybrid_search_events(query: str, limit: int = 15) -> List[EventItem]:
+def hybrid_search_events(query: str, limit: int = 15, user_id: Optional[int] = None) -> List[EventItem]:
     if not query or not query.strip():
-        return db_list_events(limit=limit)
+        return db_list_events(limit=limit, user_id=user_id)
 
-    fts_results = db_search_fts(query, limit=50)
+    fts_results = db_search_fts(query, limit=50, user_id=user_id)
     all_events_dict: Dict[int, Tuple[EventItem, float]] = {}
 
     for rank, ev in enumerate(fts_results):
@@ -71,7 +71,7 @@ def hybrid_search_events(query: str, limit: int = 15) -> List[EventItem]:
         all_events_dict[ev.id] = (ev, score)
 
     if len(all_events_dict) < limit:
-        all_events = db_list_events(limit=250)
+        all_events = db_list_events(limit=250, user_id=user_id)
         for ev in all_events:
             combined_text = f"{ev.title} {ev.description or ''} {ev.attendees or ''}"
             sim = calculate_semantic_similarity(query, combined_text)
