@@ -14,8 +14,14 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST || '31.77.203.213' }}
           username: ${{ secrets.VPS_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          passphrase: ${{ secrets.VPS_SSH_PASSPHRASE }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
             cd ~/testovoe_g0rkyc0d3
             git pull origin main
-            docker compose up -d --build
+            docker compose up -d --build --remove-orphans || {
+              echo "=== DEPLOY FAILED: CONTAINER LOGS ==="
+              docker compose logs --tail=100
+              exit 1
+            }

@@ -7,12 +7,13 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "").strip()
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
-SMTP_FROM = os.environ.get("SMTP_FROM", "noreply@voiceassistant.local").strip()
-SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+SMTP_HOST = (os.environ.get("SMTP_HOST") or "").strip()
+raw_port = (os.environ.get("SMTP_PORT") or "587").strip()
+SMTP_PORT = int(raw_port) if raw_port.isdigit() else 587
+SMTP_USER = (os.environ.get("SMTP_USER") or "").strip()
+SMTP_PASSWORD = (os.environ.get("SMTP_PASSWORD") or "").strip()
+SMTP_FROM = (os.environ.get("SMTP_FROM") or "noreply@voiceassistant.local").strip()
+SMTP_USE_TLS = (os.environ.get("SMTP_USE_TLS") or "true").lower() in ("true", "1", "yes")
 
 
 def send_email(to_email: str, subject: str, body_text: str, body_html: Optional[str] = None) -> bool:

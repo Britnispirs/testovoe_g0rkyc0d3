@@ -52,12 +52,21 @@ def init_db():
     cursor.execute("PRAGMA table_info(events);")
     columns = [row["name"] for row in cursor.fetchall()]
     if "user_id" not in columns:
-        cursor.execute("ALTER TABLE events ADD COLUMN user_id INTEGER REFERENCES users(id);")
+        try:
+            cursor.execute("ALTER TABLE events ADD COLUMN user_id INTEGER REFERENCES users(id);")
+        except Exception:
+            try:
+                cursor.execute("ALTER TABLE events ADD COLUMN user_id INTEGER;")
+            except Exception:
+                pass
 
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(type);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_datetime ON events(date, time);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_user ON events(user_id);")
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_user ON events(user_id);")
+    except Exception:
+        pass
 
     cursor.execute("""
     CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(

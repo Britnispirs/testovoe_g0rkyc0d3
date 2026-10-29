@@ -13,9 +13,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from backend.app.models.user import UserItem
 from backend.app.database import db_get_user_by_id
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "hakaton-assistant-secret-key-change-in-production-2026")
+JWT_SECRET = (os.environ.get("JWT_SECRET") or "hakaton-assistant-secret-key-change-in-production-2026").strip()
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_DAYS = int(os.environ.get("JWT_EXPIRATION_DAYS", "14"))
+raw_days = (os.environ.get("JWT_EXPIRATION_DAYS") or "14").strip()
+JWT_EXPIRATION_DAYS = int(raw_days) if raw_days.isdigit() else 14
 
 security_bearer = HTTPBearer(auto_error=False)
 
